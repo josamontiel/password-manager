@@ -1,0 +1,123 @@
+#!/usr/bin/env python3
+
+# Password manager
+
+import json
+import hashlib
+import os
+from cryptography.fernet import Fernet
+
+# Initialize an empty dictionary to store password entries
+passwords = {}
+
+# Generate a random encryption key
+key = Fernet.generate_key()
+cipher_suite = Fernet(key)
+
+# File to store encrypted passwords
+passwords_file = "encrypted_passwords.txt"
+
+# Function to display the main menu
+def main_menu():
+    print("\nPassword Manager")
+    print("1. New Entry")
+    print("2. Existing Entry")
+    print("3. Delete Entry")
+    print("4. Quit")
+
+# Function to create a new password entry
+def new_entry():
+    website = input("Enter website name: ")
+    username = input("Enter username: ")
+    password = input("Enter password: ")
+    
+    # Generate a random salt for each entry
+    salt = os.urandom(16)
+    
+    # Hash the password with the salt
+    password_hash = hashlib.pbkdf2_hmac('sha256', password.encode(), salt, 100000)
+    
+    # Store the entry in the passwords dictionary
+    passwords[website] = {
+        "username": username,
+        "salt": salt,
+        "password_hash": password_hash
+    }
+    
+    print("New entry created successfully!")
+
+# Function to view and amend existing password entries
+def existing_entry():
+    website = input("Enter website name: ")
+    
+    if website in passwords:
+        print("Website:", website)
+        print("Username:", passwords[website]["username"])
+        
+        choice = input("Do you want to update this entry? (y/n): ")
+        if choice.lower() == 'y':
+            username = input("Enter new username: ")
+            password = input("Enter new password: ")
+            
+            # Generate a new salt and hash the password with it
+            salt = os.urandom(16)
+            password_hash = hashlib.pbkdf2_hmac('sha256', password.encode(), salt, 100000)
+            
+            passwords[website]["username"] = username
+            passwords[website]["salt"] = salt
+            passwords[website]["password_hash"] = password_hash
+            
+            print("Entry updated successfully!")
+        else:
+            print("Password: ********")  # Do not display the password
+    else:
+        print("Entry not found!")
+
+# Function to delete an existing password entry
+def delete_entry():
+    website = input("Enter website name to delete: ")
+    
+    if website in passwords:
+        del passwords[website]
+        print("Entry deleted successfully!")
+    else:
+        print("Entry not found!")
+
+# Function to save encrypted passwords to a file
+def save_passwords():
+    with open(passwords_file, "wb") as file:
+        encrypted_data = cipher_suite.encrypt(json.dumps(passwords).encode())
+        file.write(encrypted_data)
+
+# Function to load encrypted passwords from a file
+def load_passwords():
+    if os.path.exists(passwords_file):
+        with open(passwords_file, "rb") as file:
+            encrypted_data = file.read()
+            decrypted_data = cipher_suite.decrypt(encrypted_data)
+            return json.loads(decrypted_data.decode())
+    else:
+        return {}
+
+# Load existing passwords from the file (if it exists)
+passwords = load_passwords()
+
+# Main program loop
+while True:
+    main_menu()
+    choice = input("Enter your choice (1/2/3/4): ")
+    
+    if choice == '1':
+        new_entry()
+        save_passwords()
+    elif choice == '2':
+        existing_entry()
+        save_passwords()
+    elif choice == '3':
+        delete_entry()
+        save_passwords()
+    elif choice == '4':
+        print("Password manager closed.")
+        break
+    else:
+        print("Invalid choice. Please enter a valid option (1/2/3/4).")

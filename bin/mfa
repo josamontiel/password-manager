@@ -1,0 +1,19 @@
+#!/usr/bin/env python3
+
+# MFA freature
+
+import pyotp
+
+# Create a new TOTP secret for a user (you should store this securely)
+secret = pyotp.random_base32()
+
+# Generate a TOTP code
+totp = pyotp.TOTP(secret)
+otp_code = totp.now()
+
+# Display the TOTP code and QR code (for scanning with an authenticator app)
+print(f"Current TOTP Code: {otp_code}")
+
+# Generate a QR code for setting up 2FA
+uri = totp.provisioning_uri("your_user@example.com", issuer_name="Your App Name")
+print(f"QR Code URI for 2FA setup:\n{uri}")
